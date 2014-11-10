@@ -89,6 +89,8 @@ public class FFmpegCommandExecutor {
     }
 
     private void checkAndUpdateProcess() throws TimeoutException, InterruptedException {
+        boolean metadataNotified = false;
+
         while (!Util.isProcessCompleted(process)) {
             // checking if process is completed
             if (Util.isProcessCompleted(process)) {
@@ -121,8 +123,9 @@ public class FFmpegCommandExecutor {
                         }
                     }
 
-                    if (metadata.getFps() > 0 && metadata.getDuration() > 0) {
+                    if (!metadataNotified && metadata.getFps() > 0 && metadata.getDuration() > 0) {
                         ffmpegExecuteResponseHandler.onMetadata(metadata);
+                        metadataNotified = true;
                     }
 
                     long processTime = Util.getProcessTime(line);
