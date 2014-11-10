@@ -10,20 +10,22 @@ public class FFmpegCommandExecutor {
 
     private final String cmd;
     private final long timeout;
-    private final FFmpegExecuteResponseHandler ffmpegExecuteResponseHandler;
+    private final FFmpegSyncResponseInterface ffmpegExecuteResponseHandler;
     private final ShellCommand shellCommand;
 
     private long startTime;
     private Process process;
     private String output = "";
+    private Metadata metadata;
 
     private volatile boolean isCancelled;
 
-    public FFmpegCommandExecutor(String cmd, long timeout, FFmpegExecuteResponseHandler ffmpegExecuteResponseHandler) {
+    public FFmpegCommandExecutor(String cmd, long timeout, FFmpegSyncResponseInterface ffmpegExecuteResponseHandler) {
         this.cmd = cmd;
         this.timeout = timeout;
         this.ffmpegExecuteResponseHandler = ffmpegExecuteResponseHandler;
         this.shellCommand = new ShellCommand();
+        this.metadata = new Metadata();
     }
 
     public synchronized void cancelProcess() {
@@ -103,7 +105,31 @@ public class FFmpegCommandExecutor {
                 BufferedReader reader = new BufferedReader(new InputStreamReader(process.getErrorStream()));
                 while ((line = reader.readLine()) != null) {
                     output += line + "\n";
-                    ffmpegExecuteResponseHandler.onProgress(line);
+
+                    if (metadata.getFps() < 0) {
+                        double fps = Util.parseFpsIfPresent(line);
+
+                        if (fps >= 0) {
+                            metadata.setFps(fps);
+                        }
+                    }
+
+                    if (metadata.getDuration() < 0) {
+                        long duration = Util.parseDurationIfPresent(line);
+                        if (duration > 0) {
+                            metadata.setDuration(duration);
+                        }
+                    }
+
+                    if (metadata.getFps() > 0 && metadata.getDuration() > 0) {
+                        ffmpegExecuteResponseHandler.onMetadata(metadata);
+                    }
+
+                    long processTime = Util.getProcessTime(line);
+
+                    if (processTime >= 0 && metadata.getDuration() > 0) {
+                        ffmpegExecuteResponseHandler.onProgress((int) (100 * (processTime / (double) metadata.getDuration())));
+                    }
                 }
             } catch (IOException e) {
                 Log.e("checkAndUpdateProcess", e);

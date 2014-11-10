@@ -71,4 +71,61 @@ class Util {
         }
         return false;
     }
+
+    public static double parseFpsIfPresent(String message) {
+        //Stream #0:0(eng): Video: h264 (Constrained Baseline) (avc1 / 0x31637661), yuv420p, 1920x1080, 12091 kb/s, SAR 65536:65536 DAR 16:9, 30.22 fps, 30.33 tbr, 90k tbn, 180k tbc (default)
+
+        if (message.trim().startsWith("Stream #") && message.contains("Video")) {
+            int fpsEnd = message.indexOf("fps,");
+            int fpsStart = fpsEnd != -1 ? message.substring(0, fpsEnd).lastIndexOf(",") + 1 : -1;
+
+            if (fpsEnd != -1 && fpsStart != -1) {
+                String fpsString = message.substring(fpsStart, fpsEnd).trim();
+
+                try {
+                    return Double.valueOf(fpsString);
+                } catch (NumberFormatException e) {
+                    android.util.Log.e("MetaParser", "Cannot obtain fps message: " + message);
+                }
+            }
+        }
+        return -1;
+    }
+
+    public static long parseDurationIfPresent(String message) {
+        //Duration: 00:00:11.76, start: 0.000000, bitrate: 12405 kb/s
+        int durationIndex = message.indexOf("Duration: ");
+        int startIndex = message.indexOf(", start:");
+        if (durationIndex >= 0 && startIndex >= 0) {
+            String durationStr = message.substring(durationIndex + 10, startIndex);
+
+            return toMillis(durationStr);
+        }
+        return -1;
+    }
+
+    public static long getProcessTime(String message) {
+        //frame=   83 fps=6.4 q=25.0 size=    5568kB time=00:00:03.05 bitrate=14947.2kbits/s
+        int timeIndex = message.indexOf("time=");
+        int bitrateIndex = message.indexOf(" bitrate=");
+
+        if (timeIndex >= 0 && bitrateIndex >= 0) {
+            String timeStr = message.substring(timeIndex + 5, bitrateIndex);
+
+            return toMillis(timeStr);
+        }
+
+        return -1;
+    }
+
+    public static long toMillis(String time) {
+        // 00:00:11.76
+        String[] split = time.split(":");
+
+        int hours = Integer.valueOf(split[0]);
+        int minutes = Integer.valueOf(split[1]);
+        double seconds = Double.valueOf(split[2]);
+
+        return (long) (1000 * (60 * 60 * hours + 60 * minutes + seconds));
+    }
 }

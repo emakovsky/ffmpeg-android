@@ -117,7 +117,7 @@ public class FFmpeg implements FFmpegInterface {
         }
     }
 
-    public void executeSync(String cmd, FFmpegExecuteResponseHandler ffmpegExecuteResponseHandler) {
+    public void executeSync(String cmd, FFmpegSyncResponseInterface ffmpegExecuteResponseHandler) {
         String ffmpegCmd = FileUtils.getFFmpeg(context) + " " + cmd;
         fFmpegCommandExecutor = new FFmpegCommandExecutor(ffmpegCmd, timeout, ffmpegExecuteResponseHandler);
         fFmpegCommandExecutor.execute();
